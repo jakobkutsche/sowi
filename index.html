@@ -707,8 +707,14 @@ const N = slides.length;
 let cur = 0;
 const revealed = new Array(N).fill(0);
 
+const AUTO = 2; // kicker + heading always pre-revealed on content slides
+function isTitleSlide(i){ return slides[i].classList.contains('s-title'); }
 function items(i){ return Array.from(slides[i].querySelectorAll('.item')); }
 function totalItems(i){ return items(i).length; }
+
+function startReveal(i){
+  revealed[i] = isTitleSlide(i) ? 0 : Math.min(AUTO, totalItems(i));
+}
 
 function renderSlide(idx){
   const its = items(idx);
@@ -729,16 +735,16 @@ function advance(){
   } else if(cur < N-1){
     slides[cur].classList.remove('cur');
     cur++;
-    revealed[cur] = 0;
     slides[cur].classList.add('cur');
+    startReveal(cur);
     renderSlide(cur);
     updateChrome();
-    setTimeout(()=>{ advance(); }, 60);
   }
 }
 
 function back(){
-  if(revealed[cur] > 1){
+  const minRev = isTitleSlide(cur) ? 0 : Math.min(AUTO, totalItems(cur));
+  if(revealed[cur] > minRev){
     revealed[cur]--;
     const el = items(cur)[revealed[cur]];
     if(el) el.classList.remove('show');
@@ -756,7 +762,17 @@ function back(){
 function updateChrome(){
   document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('on', i===cur));
   document.getElementById('counter').textContent = (cur+1)+' / '+N;
+  const bn = document.getElementById('bn');
+  const allShown = revealed[cur] >= totalItems(cur);
+  bn.style.borderColor  = allShown ? 'rgba(245,208,32,.65)' : 'rgba(255,255,255,0.1)';
+  bn.style.color        = allShown ? 'var(--price)'         : 'rgba(255,255,255,.6)';
+  bn.style.background   = allShown ? 'rgba(245,208,32,.09)' : 'rgba(255,255,255,0.05)';
 }
+
+// initialise first slide
+startReveal(0);
+renderSlide(0);
+updateChrome();
 
 const dotsEl = document.getElementById('dots');
 slides.forEach((_,i)=>{
@@ -768,10 +784,9 @@ slides.forEach((_,i)=>{
     const dir = i > cur;
     slides[cur].classList.remove('cur');
     cur = i;
-    revealed[cur] = dir ? 0 : totalItems(cur);
+    if(dir){ startReveal(cur); } else { revealed[cur] = totalItems(cur); }
     slides[cur].classList.add('cur');
     renderSlide(cur);
-    if(dir) setTimeout(()=>advance(), 60);
     updateChrome();
   });
   dotsEl.appendChild(d);
